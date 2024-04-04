@@ -1,0 +1,1 @@
+# Assignment for "Parallel and distributed systems: paradigms and models" course
