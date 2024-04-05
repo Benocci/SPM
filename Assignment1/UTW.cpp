@@ -37,7 +37,8 @@ void wavefront_sequential(
 	}
 }
 
-void wavefront_parallelB(
+// Static arallel implementation of the wavefront algorithm using block cyclic partitioning
+void wavefront_block_cyclic(
     const std::vector<int> &M,
     const uint64_t &N,
 	const uint64_t &num_threads) {
@@ -77,7 +78,9 @@ void wavefront_parallelB(
         thread.join();
 }
 
-void wavefront_parallel(
+// Static parallel implementation of the wavefront algorithm using element cyclic partitioning
+// using threads id as a parameter
+void wavefront_element_cyclic(
     const std::vector<int> &M,
     const uint64_t &N,
 	const uint64_t &num_threads) {
@@ -88,13 +91,13 @@ void wavefront_parallel(
 		const uint64_t off = id;
 		const uint64_t str = num_threads;
 
-
-		for(uint64_t k = 0; k<N; ++k) {
-
-			for(u_int64_t i = off; i<N-k; i+=str){
+		
+		for(uint64_t k = 0; k<N; ++k) { // for each upper diagonal
+			for(u_int64_t i = off; i<N-k; i+=str){ // for each elem. assigned to the thread of the diagonal
 				work(std::chrono::microseconds(M[i*N+(i+k)]));
 			}
 
+			// if the number of element of the diagonal are less then the number of threads i drop the thread
 			if(id+1 > N-k){
 				my_barrier.arrive_and_drop();
 				break;
@@ -117,34 +120,37 @@ void wavefront_parallel(
         thread.join();
 }
 
+// Parallel implementation of the wavefront algorithm using dynamic load balancing
 void wavefront_dynamic(
     const std::vector<int> &M,
     const uint64_t &N,
 	const uint64_t &num_threads){
 
-	volatile std::atomic<uint64_t> number_threads {num_threads};
-	volatile std::atomic<uint64_t> row {0};
-	uint64_t k = 0;
+	volatile std::atomic<uint64_t> element {0};
+	uint64_t k = 0; // current diagonal
 
+	// lambda function called by the barrier when all the threads reach it
 	auto on_completition = [&]() {
-		k++;
-		row.store(0);
+		k++; // increment the current diagonal
+		element.store(0);
 	};
 
 	std::barrier my_barrier(num_threads, on_completition);
 
     auto dynamic_paralizzation = [&] (const uint64_t& id) -> void {
-		uint64_t _row;
-		uint64_t _number_threads;
+		uint64_t e;
 
-		while(k<N) {
+		
+		while(k<N) { // for each upper diagonal
 			
-			_row = row.fetch_add(1);
+			// take and increment the current element
+			e = element.fetch_add(1);
 
-			if(_row < N-k){
-				work(std::chrono::microseconds(M[_row * N + (_row + k)]));
+			if(e < N-k){ // if there is still work to do
+				work(std::chrono::microseconds(M[e * N + (e + k)]));
 			}
 			else{
+				// if the number of element of the diagonal are less then the number of threads i drop the thread
 				if(id+1 > N-k){
 					my_barrier.arrive_and_drop();
 					break;
@@ -227,19 +233,19 @@ int main(int argc, char *argv[]) {
     TIMERSTOP(wavefront_sequential);
 
 	//std::printf("Parallel code executed (N = %d) with %d thread\n",N , num_threads);
-	TIMERSTART(wavefront_parallel_static);
-	wavefront_parallel(M, N, num_threads); 
-    TIMERSTOP(wavefront_parallel_static);
+	TIMERSTART(wavefront_element_cyclic);
+	wavefront_element_cyclic(M, N, num_threads); 
+    TIMERSTOP(wavefront_element_cyclic);
 
 	// SECOND VERSION (NOT OPTIMAL)
-	//TIMERSTART(wavefront_parallelB);
-	//wavefront_parallelB(M, N, num_threads); 
-    //TIMERSTOP(wavefront_parallelB);
+	//TIMERSTART(wavefront_block_cyclic);
+	//wavefront_block_cyclic(M, N, num_threads); 
+    //TIMERSTOP(wavefront_block_cyclic);
 
 	//std::printf("Parallel dynamic code executed (N = %d) with %d thread\n",N , num_threads);
-	TIMERSTART(wavefront_parallel_dynamic);
+	TIMERSTART(wavefront_dynamic);
 	wavefront_dynamic(M, N, num_threads); 
-    TIMERSTOP(wavefront_parallel_dynamic);
+    TIMERSTOP(wavefront_dynamic);
 
     return 0;
 }
