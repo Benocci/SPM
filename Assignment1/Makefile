@@ -35,11 +35,13 @@ run_average:
 	for i in $$(seq 1 10); do \
 		./$(EXECUTABLE) $(ARGS) | grep "# elapsed time" | awk '{print $$4 " " $$5}' >> temp_elapsed_times.txt; \
 	done; \
+	./$(EXECUTABLE) $(ARGS) | grep "stimated" >> temp_elapsed_times.txt; \
+	echo "$$(grep "stimated" temp_elapsed_times.txt)"; \
 	echo "Average elapsed times over 10 executions:"; \
 	echo "Sequential code: $$(grep "sequential" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
 	echo "Parallel element cyclic code: $$(grep "element" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
-	echo "Parallel dynamic code: $$(grep "dynamic" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
-	rm -f temp_elapsed_times.txt; 
+	echo "Parallel dynamic code: $$(grep "dynamic" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')";
+# rm -f temp_elapsed_times.txt; 
 
 # Phony target per i comandi non legati a file
 .PHONY: all clean run run_average
