@@ -30,20 +30,16 @@ run_single:
 	@./$(EXECUTABLE) $(ARGS)
 
 # Esegue il programma e calcola la media dei tempi di esecuzione su 10 esecuzioni
-run:
+run_average:
 	@rm -f temp_elapsed_times.txt; \
 	for i in $$(seq 1 10); do \
-		./$(EXECUTABLE) $(ARGS) | grep "# elapsed time" | awk '{print $$4}' >> temp_elapsed_times.txt; \
+		./$(EXECUTABLE) $(ARGS) | grep "# elapsed time" | awk '{print $$4 " " $$5}' >> temp_elapsed_times.txt; \
 	done; \
 	echo "Average elapsed times over 10 executions:"; \
-	echo "Sequential code: $$(awk '{ total += $$1; count++ } END { print total/count "s" }' temp_elapsed_times.txt)"; \
-	echo "Parallel element cyclic code: $$(awk '{ total += $$2; count++ } END { print total/count "s" }' temp_elapsed_times.txt)"; \
-	echo "Parallel dynamic code: $$(awk '{ total += $$3; count++ } END { print total/count "s" }' temp_elapsed_times.txt)"; \
-	
-
-# Target per eseguire l'eseguibile e calcolare la media
-run_average: $(EXECUTABLE)
-	@$(MAKE) run
+	echo "Sequential code: $$(grep "sequential" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
+	echo "Parallel element cyclic code: $$(grep "element" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
+	echo "Parallel dynamic code: $$(grep "dynamic" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
+	rm -f temp_elapsed_times.txt; 
 
 # Phony target per i comandi non legati a file
 .PHONY: all clean run run_average
