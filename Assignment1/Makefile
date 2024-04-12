@@ -15,7 +15,7 @@ all: $(EXECUTABLE)
 
 # Regola per la compilazione del programma eseguibile
 $(EXECUTABLE): $(OBJ)
-	$(CXX) $(LDFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
 # Regola per la compilazione dei file sorgente
 %.o: %.cpp

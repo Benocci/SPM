@@ -224,14 +224,15 @@ int main(int argc, char *argv[]) {
 	
 	init();
 
-	std::printf("Sequential code stimated compute time ~ %f (ms)\n", expected_totaltime/1000.0);
+	std::printf("Sequential code stimated compute time ~ %f s\n", expected_totaltime/1000000.0);
 	std::printf("Parallel dynamic code executed (N = %d) with %d thread\n",N , num_threads);
 
     //std::printf("Sequential code stimated (N = %d) compute time ~ %f (ms)\n", N, expected_totaltime/1000.0);
-    TIMERSTART(wavefront_sequential);
-	wavefront_sequential(M, N);
-    TIMERSTOP(wavefront_sequential);
-
+	#ifdef SEQ
+    	TIMERSTART(wavefront_sequential);
+		wavefront_sequential(M, N);
+    	TIMERSTOP(wavefront_sequential);
+	#endif
 	//std::printf("Parallel code executed (N = %d) with %d thread\n",N , num_threads);
 	TIMERSTART(wavefront_element_cyclic);
 	wavefront_element_cyclic(M, N, num_threads); 
