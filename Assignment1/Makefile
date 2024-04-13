@@ -1,9 +1,7 @@
 CXX                = g++ -std=c++20
 CXXFLAGS           = -O3 -march=native
 INCLUDES           = -I ./include
-SOURCES            = UTW.cpp
 EXECUTABLE         = UTW
-OBJ                = $(SRC:.cpp=.o)
 SOURCES            = UTW.cpp
 TARGET             = $(SOURCES:.cpp=)
 
