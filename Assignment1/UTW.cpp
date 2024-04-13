@@ -14,6 +14,8 @@
 #include <mutex>
 #include <hpc_helpers.hpp>
 
+#define SEQ 1
+
 int random(const int &min, const int &max) {
 	static std::mt19937 generator(117);
 	std::uniform_int_distribution<int> distribution(min,max);

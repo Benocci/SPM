@@ -1,35 +1,28 @@
 CXX                = g++ -std=c++20
-CXXFLAGS	   = -O3 -march=native
-INCLUDES	   = -I ./include
+CXXFLAGS           = -O3 -march=native
+INCLUDES           = -I ./include
 SOURCES            = UTW.cpp
-EXECUTABLE = UTW
-OBJ = $(SRC:.cpp=.o)
+EXECUTABLE         = UTW
+OBJ                = $(SRC:.cpp=.o)
+SOURCES            = UTW.cpp
+TARGET             = $(SOURCES:.cpp=)
 
-# Target principale
-all: $(EXECUTABLE)
+# Main target
+all: $(TARGET)
 
-# g++ -std=c++20 -O3 -march=native -I<path-to-include> UTWavefront.cpp -o UTW
+# Rule for compiling source files
+%: %.cpp
+	$(CXX) $(INCLUDES) $(CXXFLAGS) -o $@ $<
 
-
-.PHONY: all clean cleanall 
-
-# Regola per la compilazione del programma eseguibile
-$(EXECUTABLE): $(OBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $@
-
-# Regola per la compilazione dei file sorgente
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-# Pulisce i file oggetto e l'eseguibile
+# Clean up object files and the executable
 clean:
 	rm -f $(OBJ) $(EXECUTABLE)
 
-# Esegue una singola esecuzione del programma
+# Run the program once
 run_single:
 	@./$(EXECUTABLE) $(ARGS)
 
-# Esegue il programma e calcola la media dei tempi di esecuzione su 10 esecuzioni
+# Run the program and calculate the average execution time over 10 runs
 run_average:
 	@rm -f temp_elapsed_times.txt; \
 	for i in $$(seq 1 10); do \
@@ -40,8 +33,8 @@ run_average:
 	echo "Average elapsed times over 10 executions:"; \
 	echo "Sequential code: $$(grep "sequential" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
 	echo "Parallel element cyclic code: $$(grep "element" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
-	echo "Parallel dynamic code: $$(grep "dynamic" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')";
-# rm -f temp_elapsed_times.txt; 
+	echo "Parallel dynamic code: $$(grep "dynamic" temp_elapsed_times.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
+	rm -f temp_elapsed_times.txt; 
 
-# Phony target per i comandi non legati a file
-.PHONY: all clean run run_average
+# Phony target for commands not related to files
+.PHONY: all clean run_single run_average
