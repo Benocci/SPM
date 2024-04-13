@@ -39,7 +39,7 @@ void wavefront_sequential(
 	}
 }
 
-// Static arallel implementation of the wavefront algorithm using block cyclic partitioning
+// Static parallel implementation of the wavefront algorithm using block cyclic partitioning
 void wavefront_block_cyclic(
     const std::vector<int> &M,
     const uint64_t &N,
