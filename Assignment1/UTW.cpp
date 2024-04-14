@@ -14,7 +14,7 @@
 #include <mutex>
 #include <hpc_helpers.hpp>
 
-#define SEQ 1
+//#define SEQ 1
 
 int random(const int &min, const int &max) {
 	static std::mt19937 generator(117);
@@ -33,6 +33,20 @@ void wavefront_sequential(
     const uint64_t &N) {
 
 	for(uint64_t k = 0; k< N; ++k) {        // for each upper diagonal
+		for(uint64_t i = 0; i< (N-k); ++i) {// for each elem. in the diagonal
+            work(std::chrono::microseconds(M[i*N+(i+k)]));
+		}
+	}
+}
+
+void wavefront_omp(
+    const std::vector<int> &M,
+    const uint64_t &N,
+	const uint64_t &num_threads) {
+
+	for(uint64_t k = 0; k< N; ++k) {        // for each upper diagonal
+
+		#pragma omp parallel for num_threads(num_threads) shared(M, N, k) schedule(dynamic, 1)
 		for(uint64_t i = 0; i< (N-k); ++i) {// for each elem. in the diagonal
             work(std::chrono::microseconds(M[i*N+(i+k)]));
 		}
@@ -235,6 +249,10 @@ int main(int argc, char *argv[]) {
 		wavefront_sequential(M, N);
     	TIMERSTOP(wavefront_sequential);
 	#endif
+
+	TIMERSTART(wavefront_omp);
+	wavefront_omp(M, N, num_threads);
+	TIMERSTOP(wavefront_omp);
 
 	//std::printf("Parallel code executed (N = %d) with %d thread\n",N , num_threads);
 	TIMERSTART(wavefront_element_cyclic);

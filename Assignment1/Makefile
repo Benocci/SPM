@@ -1,5 +1,5 @@
 CXX                = g++ -std=c++20
-CXXFLAGS           = -O3 -march=native
+CXXFLAGS           = -O3 -march=native -fopenmp
 INCLUDES           = -I ./include
 EXECUTABLE         = UTW
 SOURCES            = UTW.cpp
