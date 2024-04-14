@@ -235,6 +235,7 @@ int main(int argc, char *argv[]) {
 		wavefront_sequential(M, N);
     	TIMERSTOP(wavefront_sequential);
 	#endif
+
 	//std::printf("Parallel code executed (N = %d) with %d thread\n",N , num_threads);
 	TIMERSTART(wavefront_element_cyclic);
 	wavefront_element_cyclic(M, N, num_threads); 
