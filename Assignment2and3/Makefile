@@ -4,7 +4,7 @@ INCLUDES           = -I ./include
 SOURCES            = $(wildcard *.cpp)
 TARGET             = $(SOURCES:.cpp=)
 
-.PHONY: all clean cleanall 
+.PHONY: all clean cleanall Word-Count-seq Word-Count-par
 
 %: %.cpp
 	$(CXX) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -o $@ $<
@@ -14,7 +14,6 @@ Word-Count-seq: Word-Count-seq.cpp
 
 Word-Count-par: Word-Count-par.cpp
 	$(CXX) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -o Word-Count-par Word-Count-par.cpp
-
 
 all: $(TARGET)
 
