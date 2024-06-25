@@ -12,13 +12,11 @@
 
 using umap=std::unordered_map<std::string, uint64_t>;
 using pair=std::pair<std::string, uint64_t>;
-
 struct Comp {
 	bool operator ()(const pair& p1, const pair& p2) const {
 		return p1.second > p2.second;
 	}
 };
-
 using ranking=std::multiset<pair, Comp>;
 
 // ------ globals --------
@@ -29,12 +27,9 @@ volatile uint64_t extraworkXline{0};
 void tokenize_line(const std::string& line, umap& UM) {
 	char *tmpstr;
 	char *token = strtok_r(const_cast<char*>(line.c_str()), " \r\n", &tmpstr);
-	
 	while(token) {
-		#pragma omp atomic
 		++UM[std::string(token)];
 		token = strtok_r(NULL, " \r\n", &tmpstr);
-		#pragma omp atomic
 		++total_words;
 	}
 	for(volatile uint64_t j{0}; j<extraworkXline; j++);
@@ -45,7 +40,6 @@ void compute_file(const std::string& filename, umap& UM) {
 	if (file.is_open()) {
 		std::string line;
 		std::vector<std::string> V;
- 
 		while(std::getline(file, line)) {
 			if (!line.empty()) {
 				tokenize_line(line, UM);
@@ -129,20 +123,10 @@ int main(int argc, char *argv[]) {
 	// start the time
 	auto start = omp_get_wtime();	
 
-	#pragma omp parallel
-	{
-		umap local_UM;
-		#pragma omp taskloop default(shared)
-		for (size_t i = 0; i < filenames.size(); ++i) {
-            compute_file(filenames[i], local_UM);
-        }
-
-		#pragma omp critical
-		{
-			for (const auto& pair: local_UM){
-				UM[pair.first] += pair.second;
-			}
-		}
+	
+	#pragma omp taskloop shared(UM)
+	for (auto f : filenames) {
+		compute_file(f, UM);
 	}
 
 	auto stop1 = omp_get_wtime();
@@ -164,3 +148,4 @@ int main(int argc, char *argv[]) {
 			std::cout << top->first << '\t' << top++->second << '\n';
 	}
 }
+	
