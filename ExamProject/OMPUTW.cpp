@@ -44,10 +44,10 @@ int main(int argc, char *argv[]) {
     uint64_t numThreads = 4; // default number of threads
     uint64_t print = 0;
 
-    if (argc > 1 &&  argc > 3) {
+    if (argc < 1 || argc > 4) {
 		printf("use: %s N numThreads p\n", argv[0]);
 		printf("     N size of the square matrix\n");	
-		printf("     numThread number of thread (optional)");
+		printf("     numThread number of thread (optional)\n");
         printf("     p if 1 print the matrix (optional)\n");	
 		return -1;
 	}
