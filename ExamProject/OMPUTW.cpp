@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <iomanip>
+#include <omp.h>
 #include <hpc_helpers.hpp>
 
 using namespace std;
@@ -10,9 +11,13 @@ using namespace std;
 
 void wavefront(
     vector<vector<double>>& M,
-    const uint64_t &N) {
+    const uint64_t &N,
+    int numThreads) {
+
+    omp_set_num_threads(numThreads);
 
 	for (uint64_t k = 1; k < N; ++k) {
+        #pragma omp parallel for
         for (uint64_t i = 0; i < N - k; ++i) {
             double dotProduct = 0.0;
             for (uint64_t j = 0; j < k + 1; ++j) {
@@ -35,19 +40,24 @@ void printMatrix(const vector<vector<double>>& M, int N) {
 
 
 int main(int argc, char *argv[]) {
-	uint64_t N = 6;    // default size of the matrix (NxN)
-	uint64_t print = 0;
+	uint64_t N = 6;          // default size of the matrix (NxN)
+    uint64_t numThreads = 4; // default number of threads
+    uint64_t print = 0;
 
-    if (argc != 1 && argc != 2 && argc != 3 ) {
-		printf("use: %s N p\n", argv[0]);
+    if (argc > 1 &&  argc > 3) {
+		printf("use: %s N numThreads p\n", argv[0]);
 		printf("     N size of the square matrix\n");	
-		printf("     p if 1 print the matrix (optional)\n");	
+		printf("     numThread number of thread (optional)");
+        printf("     p if 1 print the matrix (optional)\n");	
 		return -1;
 	}
 	if (argc > 1) {
 		N = stol(argv[1]);
         if(argc > 2){
-            print = stol(argv[2]);
+            numThreads = stol(argv[2]);
+            if(argc > 3){
+                print = stol(argv[3]);
+            }
         }
 	}
 
@@ -63,7 +73,7 @@ int main(int argc, char *argv[]) {
     init();
 
 	TIMERSTART(wavefront);
-	wavefront(M, N);
+	wavefront(M, N, numThreads);
     TIMERSTOP(wavefront);
 
     if(print == 1){
