@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
     if (argc != 1 && argc != 2 && argc != 3 ) {
 		printf("use: %s N p\n", argv[0]);
 		printf("     N size of the square matrix\n");	
-		printf("     p if 1 print the matrix (optional)\n");	
+		printf("     p if 1 print the matrix, if 2 print last value (optional)\n");	
 		return -1;
 	}
 	if (argc > 1) {
@@ -68,6 +68,9 @@ int main(int argc, char *argv[]) {
 
     if(print == 1){
         printMatrix(M,N);
+    }
+    else if(print == 2){
+        printf("Last value [0][%ld]=%f\n",N-1, M[0][N-1]);
     }
 
     return 0;
