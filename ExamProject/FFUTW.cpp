@@ -14,7 +14,7 @@ void wavefront(
     vector<vector<double>>& M,
     const uint64_t &N,
     int numThreads) {
-    ParallelFor pf(numThreads);
+    ParallelFor pf(numThreads, true, true);
 
 	for (uint64_t k = 1; k < N; ++k) {
         pf.parallel_for(0, N-k, 1, [&, N, k](const int i) {
@@ -23,7 +23,7 @@ void wavefront(
                 dotProduct += M[i][i + k - j] * M[i + j][i + k];
             }
             M[i][i + k] = cbrt(dotProduct);
-        });
+        }, numThreads);
     }
 }
 
