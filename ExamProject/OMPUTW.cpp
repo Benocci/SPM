@@ -20,7 +20,7 @@ void wavefront(
         #pragma omp parallel for
         for (uint64_t i = 0; i < N - k; ++i) {
             double dotProduct = 0.0;
-            for (uint64_t j = 0; j < k + 1; ++j) {
+            for (uint64_t j = 1; j < k + 1; ++j) {
                 dotProduct += M[i][i + k - j] * M[i + j][i + k];
             }
             M[i][i + k] = cbrt(dotProduct);
