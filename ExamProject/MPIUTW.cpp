@@ -8,23 +8,6 @@
 
 using namespace std;
 
-void wavefront(vector<vector<double>>& M, const uint64_t &N, int rank, int size) {
-    for (uint64_t k = 1; k < N; ++k) {
-        for (uint64_t i = rank; i < N - k; i += size) {
-            double dotProduct = 0.0;
-            for (uint64_t j = 0; j < k + 1; ++j) {
-                dotProduct += M[i][i + k - j] * M[i + j][i + k];
-            }
-            M[i][i + k] = cbrt(dotProduct);
-        }
-
-        // Sincronizzazione dei risultati intermedi tra i processi
-        for (uint64_t i = 0; i < N - k; ++i) {
-            MPI_Bcast(&M[i][i + k], 1, MPI_DOUBLE, i % size, MPI_COMM_WORLD);
-        }
-    }
-}
-
 void printMatrix(const vector<vector<double>>& M, int N) {
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
@@ -37,15 +20,15 @@ void printMatrix(const vector<vector<double>>& M, int N) {
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    int myRank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     uint64_t N = 6;    // default size of the matrix (NxN)
     uint64_t print = 0;
 
     if (argc != 1 && argc != 2 && argc != 3 ) {
-        if(rank == 0) {
+        if(myRank == 0) {
             printf("use: %s N p\n", argv[0]);
             printf("     N size of the square matrix\n");   
             printf("     p if 1 print the matrix (optional)\n");  
@@ -69,14 +52,102 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    init();
+    if(myRank==0){
+        init();
+    }
 
-    TIMERSTART(wavefront);
-    wavefront(M, N, rank, size);
-    TIMERSTOP(wavefront);
+    // Measure the current time
+	double start = MPI_Wtime();
 
-    if(print == 1 && rank == 0){
-        printMatrix(M,N);
+    // Distribute work across processes
+    for (int k = 1; k < N; ++k) {  // k = 1 to N-1 (diagonals)
+        if (N - k < size) {
+            size--;
+        }
+
+        if (myRank < size) {
+            // The computation is divided by rows
+            int overlap = 1;  // number of overlapping rows
+            int numberOfRows = (N - k) / size;
+            // printf("The number of ROWS per process are %d and rank is %d\n", numberOfRows, myRank);
+            int myRows = numberOfRows + k;  // this plus overlap is necessary because to compute the dot product a process needs at least of two rows
+
+            // For the cases that 'rows' is not multiple of size
+            if (myRank < (N - k) % size) {
+                myRows++;
+            }
+            // printf("Rank=%d, k=%d and myRows are %d\n", myRank, k, myRows);
+
+            // Arrays for the chunk of data to work
+            vector<vector<double>> myData(myRows, vector<double>(N, 0.0));
+
+            // The process 0 must specify how many rows are sent to each process   
+            vector<int> sendCounts(size);
+            vector<int> displs(size);
+
+            if (!myRank) {
+                int currentDisp = 0;
+
+                for (int i = 0; i < size; i++) {
+                    if (i < (N - k) % size) {
+                        sendCounts[i] = (numberOfRows + k + 1) * N;
+                    } else {
+                        sendCounts[i] = (numberOfRows + k) * N;
+                    }
+                    displs[i] = currentDisp;
+                    currentDisp += sendCounts[i];
+                }
+            }
+
+            // Scatter the input matrix
+            vector<double> sendBuffer, recvBuffer(myRows * N);
+            if (myRank == 0) {
+                for (const auto& row : M) {
+                    sendBuffer.insert(sendBuffer.end(), row.begin(), row.end());
+                }
+            }
+
+            MPI_Scatterv(sendBuffer.data(), sendCounts.data(), displs.data(), MPI_DOUBLE, recvBuffer.data(), myRows * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+            int shift = myRank * numberOfRows;
+            if ((N - k) % size != 0 && myRank != 0) {
+                shift += myRank < (N - k) % size ? myRank : (N - k) % size;
+            }
+            // printf("MyRank is %d and my shift is %d\n", myRank, shift);
+
+            // Each process computes its part of the diagonal
+            for (int i = 0; i < myRows - k; ++i) {
+                double result = 0.0;
+
+                // #pragma omp parallel for num_threads(numThreads) reduction(+:result)
+                for (int j = 1; j < k + 1; ++j) {
+                    result += recvBuffer[shift + i * N + (i + k - j)] * recvBuffer[shift + (i + j) * N + (i + k)];
+                }
+                recvBuffer[shift + i * N + (i + k)] = cbrt(result);
+            }
+
+            MPI_Gatherv(recvBuffer.data(), myRows * N, MPI_DOUBLE, sendBuffer.data(), sendCounts.data(), displs.data(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+            if (myRank == 0) {
+                for (int i = 0; i < N; ++i) {
+                    for (int j = 0; j < N; ++j) {
+                        M[i][j] = sendBuffer[i * N + j];
+                    }
+                }
+            }
+        }
+    }
+    
+    double end = MPI_Wtime();
+
+    if(myRank==0){
+        std::cout << "Time with " << size << " processes: " << end-start << " seconds" << std::endl;
+        if(print == 1){
+            printMatrix(M,N);
+        }
+        else if(print == 2){
+            printf("Last value [0][%ld]=%f\n",N-1, M[0][N-1]);
+        }
     }
 
     MPI_Finalize();

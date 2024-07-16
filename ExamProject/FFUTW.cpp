@@ -19,7 +19,7 @@ void wavefront(
 	for (uint64_t k = 1; k < N; ++k) {
         pf.parallel_for(0, N-k, 1, [&, N, k](const int i) {
             double dotProduct = 0.0;
-            for (uint64_t j = 0; j < k + 1; ++j) {
+            for (uint64_t j = 1; j < k + 1; ++j) {
                 dotProduct += M[i][i + k - j] * M[i + j][i + k];
             }
             M[i][i + k] = cbrt(dotProduct);
