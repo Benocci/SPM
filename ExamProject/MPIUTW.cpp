@@ -17,6 +17,15 @@ void printMatrix(const vector<vector<double>>& M, int N) {
     }
 }
 
+void print_matrix(double *M, int N, int row) {
+    for (int i = 0; i < row; ++i) {
+        for (int j = 0; j < N; ++j) {
+            printf("%lf ", M[i * N + j]);
+        }
+        printf("\n");
+    }
+}
+
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     
@@ -61,41 +70,43 @@ int main(int argc, char *argv[]) {
 
     // Distribute work across processes
     for (int k = 1; k < N; ++k) {  // k = 1 to N-1 (diagonals)
-        if (N - k < size) {
-            size--;
+        int currentSize = size;
+        if (N - k < currentSize) {
+            currentSize = N - k;
         }
 
-        if (myRank < size) {
+        if (myRank < currentSize) {
             // The computation is divided by rows
-            int overlap = 1;  // number of overlapping rows
-            int numberOfRows = (N - k) / size;
+            int numberOfRows = (N - k) / currentSize;
             // printf("The number of ROWS per process are %d and rank is %d\n", numberOfRows, myRank);
             int myRows = numberOfRows + k;  // this plus overlap is necessary because to compute the dot product a process needs at least of two rows
 
             // For the cases that 'rows' is not multiple of size
-            if (myRank < (N - k) % size) {
+            if (myRank < (N - k) % currentSize) {
                 myRows++;
             }
             // printf("Rank=%d, k=%d and myRows are %d\n", myRank, k, myRows);
 
-            // Arrays for the chunk of data to work
-            vector<vector<double>> myData(myRows, vector<double>(N, 0.0));
-
             // The process 0 must specify how many rows are sent to each process   
-            vector<int> sendCounts(size);
-            vector<int> displs(size);
+            vector<int> sendCounts(currentSize);
+            vector<int> displs(currentSize);
 
             if (!myRank) {
-                int currentDisp = 0;
+                displs[0] = 0;
 
-                for (int i = 0; i < size; i++) {
-                    if (i < (N - k) % size) {
-                        sendCounts[i] = (numberOfRows + k + 1) * N;
-                    } else {
-                        sendCounts[i] = (numberOfRows + k) * N;
+                for(int i=0; i<currentSize; i++){
+                    if(i>0){
+                        displs[i] = displs[i-1]+sendCounts[i-1]- k * N;
                     }
-                    displs[i] = currentDisp;
-                    currentDisp += sendCounts[i];
+
+                    if(i < (N-k)%currentSize){
+                        sendCounts[i] = (numberOfRows+k+1)*N;
+                    } else {
+                        sendCounts[i] = (numberOfRows+k)*N;
+                    }
+
+                    // printf("The sendCounts of %d is %d\n", i, sendCounts[i]);
+                    // printf("The displs of %d is %d\n", i, displs[i]);
                 }
             }
 
@@ -105,15 +116,24 @@ int main(int argc, char *argv[]) {
                 for (const auto& row : M) {
                     sendBuffer.insert(sendBuffer.end(), row.begin(), row.end());
                 }
+                
+                if(k == 1){
+                    printf("Starting matrix:\n");
+                    printMatrix(M,N);
+                    //printf("-------------------\n");
+                    //print_matrix(sendBuffer.data(),N);
+                }
             }
+
 
             MPI_Scatterv(sendBuffer.data(), sendCounts.data(), displs.data(), MPI_DOUBLE, recvBuffer.data(), myRows * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
             int shift = myRank * numberOfRows;
-            if ((N - k) % size != 0 && myRank != 0) {
-                shift += myRank < (N - k) % size ? myRank : (N - k) % size;
+            if ((N - k) % currentSize != 0 && myRank != 0) {
+                shift += myRank < (N - k) % currentSize ? myRank : (N - k) % currentSize;
             }
-            // printf("MyRank is %d and my shift is %d\n", myRank, shift);
+            printf("MyRank is %d and my shift is %d\n", myRank, shift);
+            //print_matrix(recvBuffer.data(), N, myRows);
 
             // Each process computes its part of the diagonal
             for (int i = 0; i < myRows - k; ++i) {
@@ -121,8 +141,10 @@ int main(int argc, char *argv[]) {
 
                 // #pragma omp parallel for num_threads(numThreads) reduction(+:result)
                 for (int j = 1; j < k + 1; ++j) {
+                    printf("My rank is %d, buffer[%ld]=buffer[%ld]*buffer[%ld]=%f*%f.\n",myRank, shift + i * N + (i + k), shift + i * N + (i + k - j), shift + (i + j) * N + (i + k), recvBuffer[shift + i * N + (i + k - j)], recvBuffer[shift + (i + j) * N + (i + k)]);
                     result += recvBuffer[shift + i * N + (i + k - j)] * recvBuffer[shift + (i + j) * N + (i + k)];
                 }
+                printf("My rank is %d, buffer[%ld]=%f\n",myRank, shift+i * N + (i + k),cbrt(result));
                 recvBuffer[shift + i * N + (i + k)] = cbrt(result);
             }
 
@@ -134,6 +156,7 @@ int main(int argc, char *argv[]) {
                         M[i][j] = sendBuffer[i * N + j];
                     }
                 }
+                printMatrix(M,N);
             }
         }
     }
