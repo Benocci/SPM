@@ -11,7 +11,7 @@ MPI    			= mpicxx -std=c++20
 OPTFLAGS	    = -O3 -DNDEBUG -ffast-math
 INCLUDES	   	= -I. -I ../include -I $(FF_ROOT)
 LIBS            = -pthread
-SOURCES         = $(wildcard *.cpp)
+SOURCES         = $(filter-out MPIUTW.cpp, $(wildcard *.cpp))
 TARGET          = $(SOURCES:.cpp=)
 
 .PHONY: all clean cleanall run_single run_average
