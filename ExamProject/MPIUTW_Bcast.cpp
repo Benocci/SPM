@@ -23,10 +23,8 @@ void wavefront(
             M[i][i + k] = cbrt(dotProduct);
         }
 
-        // Sincronizzazione tra i processi
-        MPI_Barrier(MPI_COMM_WORLD);
+        // MPI_Barrier(MPI_COMM_WORLD);
 
-        // Condivisione delle colonne aggiornate tra tutti i processi
         for (uint64_t i = 0; i < N - k; ++i) {
             MPI_Bcast(&M[i][i + k], 1, MPI_DOUBLE, i % size, MPI_COMM_WORLD);
         }
@@ -46,7 +44,7 @@ int main(int argc, char *argv[]) {
     uint64_t N = 6;    // default size of the matrix (NxN)
     uint64_t print = 0;
 
-    // Inizializzazione di MPI
+
     MPI_Init(&argc, &argv);
 
     int rank, size;
@@ -93,7 +91,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Finalizzazione di MPI
     MPI_Finalize();
     return 0;
 }
