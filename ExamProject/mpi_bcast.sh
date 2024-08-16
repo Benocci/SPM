@@ -9,5 +9,6 @@
 
 echo "Test executed on: $SLURM_JOB_NODELIST"
 make mpi
-mpirun -n 4 ./MPIUTW.o $1 $2 $3
+echo "Executed with $2 process"
+mpirun -n $2 ./MPIUTW.o $1 $3
 echo "done"
