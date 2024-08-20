@@ -8,29 +8,6 @@
 
 using namespace std;
 
-void wavefront(
-    vector<vector<double>>& M,
-    const uint64_t &N,
-    const int &rank,
-    const int &size) {
-
-    for (uint64_t k = 1; k < N; ++k) {
-        for (uint64_t i = rank; i < N - k; i += size) {
-            double dotProduct = 0.0;
-            for (uint64_t j = 1; j < k + 1; ++j) {
-                dotProduct += M[i][i + k - j] * M[i + j][i + k];
-            }
-            M[i][i + k] = cbrt(dotProduct);
-        }
-
-        // MPI_Barrier(MPI_COMM_WORLD);
-
-        for (uint64_t i = 0; i < N - k; ++i) {
-            MPI_Bcast(&M[i][i + k], 1, MPI_DOUBLE, i % size, MPI_COMM_WORLD);
-        }
-    }
-}
-
 void printMatrix(const vector<vector<double>>& M, int N) {
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
@@ -78,7 +55,24 @@ int main(int argc, char *argv[]) {
 
     // Measure the current time
 	double start = MPI_Wtime();
-    wavefront(M, N, rank, size);
+    
+    for (uint64_t k = 1; k < N; ++k) {
+        for (uint64_t i = rank; i < N - k; i += size) {
+            double dotProduct = 0.0;
+            for (uint64_t j = 1; j < k + 1; ++j) {
+                dotProduct += M[i][i+k - j] * M[i+k][i+j];
+            }
+            M[i][i+k] = cbrt(dotProduct);
+            M[i+k][i] = M[i][i+k];
+        }
+
+        // MPI_Barrier(MPI_COMM_WORLD);
+
+        for (uint64_t i = 0; i < N - k; ++i) {
+            MPI_Bcast(&M[i][i + k], 1, MPI_DOUBLE, i % size, MPI_COMM_WORLD);
+        }
+    }
+
     double end = MPI_Wtime();
 
     if (rank == 0) {

@@ -1,4 +1,3 @@
-# 
 # FF_ROOT     points to the FastFlow root directory (i.e.
 #             the one containing the ff directory).
 ifndef FF_ROOT 
@@ -11,8 +10,8 @@ MPI    			= mpicxx -std=c++20
 OPTFLAGS	    = -O3 -DNDEBUG -ffast-math
 INCLUDES	   	= -I. -I ../include -I $(FF_ROOT)
 LIBS            = -pthread
-MPIFILE 		= MPIUTW_Bcast.cpp
-SOURCES         = $(filter-out $(wildcard MPI*), $(wildcard *.cpp))
+MPIFILES 		= $(wildcard MPI*.cpp)
+SOURCES         = $(filter-out $(MPIFILES), $(wildcard *.cpp))
 TARGET          = $(SOURCES:.cpp=)
 
 .PHONY: all clean cleanall run_single run_average
@@ -20,8 +19,10 @@ TARGET          = $(SOURCES:.cpp=)
 %: %.cpp
 	$(CXX) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -o $@.o $< $(LIBS)
 
-mpi: $(MPIFILE)
-	$(MPI) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -o MPIUTW.o $< $(LIBS)
+mpi: $(MPIFILES:.cpp=.o)
+
+%.o: %.cpp
+	$(MPI) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -c $< $(LIBS)
 
 all: $(TARGET)
 
