@@ -8,7 +8,7 @@
 #SBATCH -t 02:00:00
 
 echo "Test executed on: $SLURM_JOB_NODELIST"
-make SequentialUTW
-echo "Execution with N=$1"
-make run_average FILE="SequentialUTW.o" ARGS="$1 $2"
+make $1
+echo "Execution of $1 with N=$2"
+make run_average FILE="$1.o" ARGS="$2 $3"
 echo "done"
