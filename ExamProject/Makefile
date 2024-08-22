@@ -22,7 +22,7 @@ TARGET          = $(SOURCES:.cpp=)
 mpi: $(MPIFILES:.cpp=.o)
 
 %.o: %.cpp
-	$(MPI) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -c $< $(LIBS)
+	$(MPI) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -o $@ $< $(LIBS)
 
 all: $(TARGET)
 
