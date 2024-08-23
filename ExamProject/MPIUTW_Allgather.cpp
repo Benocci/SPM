@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
-#include <algorithm>
 #include <iomanip>
 #include <mpi.h>
 
@@ -53,8 +52,29 @@ int main(int argc, char *argv[]) {
 
     // Measure the current time
     double start = MPI_Wtime();
-    
+
+    // Temporary buffer to store local results
+    vector<double> local_results(N * (N - 1) / 2, 0.0); // Size based on triangular number
+    vector<int> counts(size, 0); // Count of elements each process contributes
+    vector<int> displs(size, 0); // Displacements for each process in the final gathered array
+
+    // Calculate counts and displacements for MPI_Allgatherv
+    int offset = 0;
+    for (int p = 0; p < size; ++p) {
+        counts[p] = 0;
+        for (uint64_t k = 1; k < N; ++k) {
+            for (uint64_t i = p; i < N - k; i += size) {
+                counts[p]++;
+            }
+        }
+        displs[p] = offset;
+        offset += counts[p];
+    }
+
+    // Parallel wavefront computation
+    offset = 0;
     for (uint64_t k = 1; k < N; ++k) {
+        int local_count = 0;
         for (uint64_t i = rank; i < N - k; i += size) {
             double dotProduct = 0.0;
             for (uint64_t j = 1; j < k + 1; ++j) {
@@ -62,13 +82,22 @@ int main(int argc, char *argv[]) {
             }
             M[i][i+k] = cbrt(dotProduct);
             M[i+k][i] = M[i][i+k];
+            local_results[offset + local_count] = M[i][i+k];
+            local_count++;
         }
+        offset += local_count;
 
-        // Synchronize all processes to ensure the matrix is updated before moving to the next iteration
-        for (uint64_t i = 0; i < N - k; ++i) {
-            MPI_Bcast(&M[i][i+k], 1, MPI_DOUBLE, i % size, MPI_COMM_WORLD);
-            //MPI_Bcast(&M[i+k][i], 1, MPI_DOUBLE, i % size, MPI_COMM_WORLD);
-            M[i+k][i] = M[i][i+k];
+        // Synchronize all processes by gathering the results
+        MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, local_results.data(), counts.data(), displs.data(), MPI_DOUBLE, MPI_COMM_WORLD);
+
+        // Update the matrix with the gathered results
+        offset = 0;
+        for (uint64_t k = 1; k < N; ++k) {
+            for (uint64_t i = 0; i < N - k; ++i) {
+                M[i][i+k] = local_results[offset];
+                M[i+k][i] = M[i][i+k];
+                offset++;
+            }
         }
     }
 

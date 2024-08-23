@@ -1,8 +1,6 @@
 #!/bin/sh
 #SBATCH -p normal
-#SBATCH -N 4
-#SBATCH --ntasks=4
-#SBATCH --ntasks-per-node=1
+#SBATCH --nodes=1
 #SBATCH -o ./%j-mpibcast.log
 #SBATCH -e ./%j-mpibcast.err
 #SBATCH -t 00:50:00
