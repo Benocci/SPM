@@ -67,7 +67,6 @@ int main(int argc, char *argv[]) {
         // Synchronize all processes to ensure the matrix is updated before moving to the next iteration
         for (uint64_t i = 0; i < N - k; ++i) {
             MPI_Bcast(&M[i][i+k], 1, MPI_DOUBLE, i % size, MPI_COMM_WORLD);
-            //MPI_Bcast(&M[i+k][i], 1, MPI_DOUBLE, i % size, MPI_COMM_WORLD);
             M[i+k][i] = M[i][i+k];
         }
     }
