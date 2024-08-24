@@ -40,11 +40,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // allocate the matrix
+    // Allocate the matrix
     vector<vector<double>> M(N, vector<double>(N, 0.0));
 
-    auto init=[&]() {
-        for(uint64_t i=0; i < N; ++i){
+    auto init = [&]() {
+        for (uint64_t i = 0; i < N; ++i) {
             M[i][i] = static_cast<double>(i + 1) / N;
         }
     };
@@ -54,65 +54,62 @@ int main(int argc, char *argv[]) {
     // Measure the current time
     double start = MPI_Wtime();
 
-    vector<int> sendcounts(size, 0);
-    vector<int> displs(size, 0);
-
     for (uint64_t k = 1; k < N; ++k) {
-        // Determine the number of elements each process will handle
-        int idx = 0;
-        for (int i = 0; i < size; ++i) {
-            sendcounts[i] = 0;
-            for (uint64_t j = i; j < N - k; j += size) {
-                sendcounts[i]++;
-            }
-        }
+        vector<double> values_to_send; // Array to collect calculated values
+        vector<int> indices;           // Array to store indices corresponding to the calculated values
 
-        // Calculate displacements
-        displs[0] = 0;
-        for (int i = 1; i < size; ++i) {
-            displs[i] = displs[i-1] + sendcounts[i-1];
-        }
-
-        vector<double> local_data(sendcounts[rank], 0.0);
-        vector<double> gathered_data((N * (N - 1)) / 2, 0.0);
-
-        idx = 0;
         for (uint64_t i = rank; i < N - k; i += size) {
             double dotProduct = 0.0;
             for (uint64_t j = 1; j < k + 1; ++j) {
                 dotProduct += M[i][i+k - j] * M[i+k][i+j];
             }
-            M[i][i+k] = cbrt(dotProduct);
-            local_data[idx++] = M[i][i+k];
+            double value = cbrt(dotProduct);
+            M[i][i+k] = value;
+            M[i+k][i] = value;
+
+            // Store the calculated value and its index
+            values_to_send.push_back(value);
+            indices.push_back(i);
         }
 
-        // Allgatherv to gather data from all processes
-        MPI_Allgatherv(local_data.data(), sendcounts[rank], MPI_DOUBLE,
-                       gathered_data.data(), sendcounts.data(), displs.data(),
-                       MPI_DOUBLE, MPI_COMM_WORLD);
+        // Gather all the calculated values from all processes
+        int total_values = values_to_send.size();
+        vector<int> recv_counts(size);
+        MPI_Allgather(&total_values, 1, MPI_INT, recv_counts.data(), 1, MPI_INT, MPI_COMM_WORLD);
 
-        idx = 0;
-        for (uint64_t i = 0; i < N - k; ++i) {
-            if (i % size == rank) {
-                M[i][i+k] = gathered_data[displs[rank] + idx];
-                M[i+k][i] = M[i][i+k];
-                idx++;
-            } else {
-                M[i][i+k] = gathered_data[displs[i % size] + (i / size)];
-                M[i+k][i] = M[i][i+k];
-            }
+        vector<int> displs(size, 0);
+        int total_elements = 0;
+        for (int i = 0; i < size; ++i) {
+            displs[i] = total_elements;
+            total_elements += recv_counts[i];
+        }
+
+        vector<double> gathered_values(total_elements);
+        vector<int> gathered_indices(total_elements);
+
+        MPI_Allgatherv(values_to_send.data(), total_values, MPI_DOUBLE,
+                      gathered_values.data(), recv_counts.data(), displs.data(), MPI_DOUBLE,
+                      MPI_COMM_WORLD);
+
+        MPI_Allgatherv(indices.data(), total_values, MPI_INT,
+                      gathered_indices.data(), recv_counts.data(), displs.data(), MPI_INT,
+                      MPI_COMM_WORLD);
+
+        // Update the matrix with the gathered values
+        for (int i = 0; i < total_elements; ++i) {
+            M[gathered_indices[i]][gathered_indices[i] + k] = gathered_values[i];
+            M[gathered_indices[i] + k][gathered_indices[i]] = gathered_values[i];
         }
     }
 
     double end = MPI_Wtime();
 
     if (rank == 0) {
-        std::cout << "Time with " << size << " processes: " << end-start << " seconds" << std::endl;
-        if(print == 1){
-            printMatrix(M,N);
-        }
-        else if(print == 2){
-            printf("Last value [0][%ld]=%f\n",N-1, M[0][N-1]);
+        std::cout << "Time with " << size << " processes: " << end - start << " seconds" << std::endl;
+        if (print == 1) {
+            printMatrix(M, N);
+        } else if (print == 2) {
+            printf("Last value [0][%ld]=%f\n", N - 1, M[0][N - 1]);
         }
     }
 
