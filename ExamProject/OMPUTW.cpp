@@ -14,16 +14,26 @@ void wavefront(
     const uint64_t &N,
     int numThreads) {
 
-    omp_set_num_threads(numThreads);
+    int threads = numThreads;
 
 	for (uint64_t k = 1; k < N; ++k) {
-        #pragma omp parallel for
         for (uint64_t i = 0; i < N - k; ++i) {
             double dotProduct = 0.0;
-            for (uint64_t j = 1; j < k + 1; ++j) {
-                dotProduct += M[i][i + k - j] * M[i + j][i + k];
+
+            if(numThreads > k){
+                threads = k;
             }
-            M[i][i + k] = cbrt(dotProduct);
+            else{
+                threads = numThreads;
+            }
+
+            #pragma omp parallel for num_threads(threads) reduction(+:dotProduct)
+            for (uint64_t j = 1; j < k + 1; ++j) {
+                dotProduct += M[i][i+k - j] * M[i+k][i+j];
+            }
+
+            M[i][i+k] = cbrt(dotProduct);
+            M[i+k][i] = M[i][i+k];
         }
     }
 }
@@ -78,6 +88,9 @@ int main(int argc, char *argv[]) {
 
     if(print == 1){
         printMatrix(M,N);
+    }
+    else if(print == 2){
+        printf("Last value [0][%ld]=%f\n",N-1, M[0][N-1]);
     }
 
     return 0;
