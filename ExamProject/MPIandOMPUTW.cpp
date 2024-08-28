@@ -1,9 +1,9 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
-#include <algorithm>
 #include <iomanip>
 #include <mpi.h>
+#include <omp.h>
 
 using namespace std;
 
@@ -19,8 +19,6 @@ void printMatrix(const vector<vector<double>>& M, int N) {
 int main(int argc, char *argv[]) {
     uint64_t N = 6;    // default size of the matrix (NxN)
     uint64_t print = 0;
-    int numThreads = 8;
-    int threads = numThreads;
 
     MPI_Init(&argc, &argv);
 
@@ -60,28 +58,28 @@ int main(int argc, char *argv[]) {
         vector<double> values_to_send; // Array to collect calculated values
         vector<int> indices;           // Array to store indices corresponding to the calculated values
 
-        
-        for (uint64_t i = rank; i < N - k; i += size) {
-            double dotProduct = 0.0;
-            
-            if(numThreads > k){
-                threads = k;
-            }
-            else{
-                threads = numThreads;
-            }
+        #pragma omp parallel
+        {
+            vector<double> local_values_to_send;
+            vector<int> local_indices;
 
-            #pragma omp parallel for num_threads(threads) reduction(+:dotProduct)
-            for (uint64_t j = 1; j < k + 1; ++j) {
-                dotProduct += M[i][i+k - j] * M[i+k][i+j];
-            }
-            double value = cbrt(dotProduct);
-            M[i][i+k] = value;
-            M[i+k][i] = value;
+            #pragma omp for schedule(dynamic)
+            for (uint64_t i = rank; i < N - k; i += size) {
+                double dotProduct = 0.0;
+                for (uint64_t j = 1; j < k + 1; ++j) {
+                    dotProduct += M[i][i+k - j] * M[i+k][i+j];
+                }
+                double value = cbrt(dotProduct);
+                M[i][i+k] = value;
+                M[i+k][i] = value;
 
-            // Store the calculated value and its index
-            values_to_send.push_back(value);
-            indices.push_back(i);
+                // Store the calculated value and its index
+                #pragma omp critical
+                {
+                    values_to_send.push_back(value);
+                    indices.push_back(i);
+                }
+            }
         }
 
         // Gather all the calculated values from all processes
