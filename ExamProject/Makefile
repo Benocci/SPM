@@ -39,6 +39,15 @@ run_average:
   	echo "$$(grep "Time: " temp_elapsed_times_$$ARG2.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
   	rm -f temp_elapsed_times_$$ARG2.txt;
 
+run_average_mpi:
+	@ ARG2=$(shell echo $(ARGS) | awk '{print $$2}'); \
+	for i in $$(seq 1 10); do \
+		mpirun ./$(FILE) $(ARGS) | grep "# elapsed time" | awk '{print "Time: " $$5}' >> temp_elapsed_times_$$ARG2.txt; \
+  	done; \
+  	echo "Average elapsed times over 10 executions:"; \
+  	echo "$$(grep "Time: " temp_elapsed_times_$$ARG2.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
+  	rm -f temp_elapsed_times_$$ARG2.txt;
+
 clean: 
 	-rm -fr *.o *~
 cleanall: clean
