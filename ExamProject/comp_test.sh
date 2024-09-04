@@ -15,5 +15,5 @@ make run_average FILE="SequentialUTWv2.o" ARGS="$1 $3"
 echo "FF time with $2 threads:"
 make run_average FILE="FFUTWv2.o" ARGS="$1 $2 $3"
 echo "MPI time with $2 processes:"
-mpirun -n $2 ./MPIUTW_Allgather.o $1 $3
+make run_average_mpi FILE="./MPIUTW_Allgather.o" ARGS="$1 $2 $3"
 echo "done"
