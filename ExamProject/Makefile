@@ -40,23 +40,23 @@ run_single:
 
 # Target to run the program multiple times and calculate the average execution time over 10 runs
 run_average:
-	@ ARG2=$(shell echo $(ARGS) | awk '{print $$2}'); \ # Extract the second argument (usually matrix size or a key parameter)
-	for i in $$(seq 1 10); do \                         # Loop to run the program 10 times
-		./$(FILE) $(ARGS) | grep "# elapsed time" | awk '{print "Time: " $$5}' >> temp_elapsed_times_$$ARG2.txt; \ # Extract elapsed time and store it in a temp file
+	@ ARG2=$(shell echo $(ARGS) | awk '{print $$2}'); \
+	for i in $$(seq 1 10); do \
+		./$(FILE) $(ARGS) | grep "# elapsed time" | awk '{print "Time: " $$5}' >> temp_elapsed_times_$$ARG2.txt; \
   	done; \
-  	echo "Average elapsed times over 10 executions:"; \ # Print the average of the recorded times
+  	echo "Average elapsed times over 10 executions:"; \
   	echo "$$(grep "Time: " temp_elapsed_times_$$ARG2.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
-  	rm -f temp_elapsed_times_$$ARG2.txt;                # Clean up the temp file after use
+  	rm -f temp_elapsed_times_$$ARG2.txt;
 
 # Similar to run_average, but uses MPI for parallel execution
 run_average_mpi:
-	@ ARG2=$(shell echo $(ARGS) | awk '{print $$2}'); \ # Extract the second argument
-	for i in $$(seq 1 10); do \                         # Loop to run the program 10 times using MPI
-		mpirun ./$(FILE) $(ARGS) | grep "# elapsed time" | awk '{print "Time: " $$5}' >> temp_elapsed_times_$$ARG2.txt; \ # Extract elapsed time with MPI
+	@ ARG2=$(shell echo $(ARGS) | awk '{print $$2}'); \
+	for i in $$(seq 1 10); do \
+		mpirun ./$(FILE) $(ARGS) | grep "# elapsed time" | awk '{print "Time: " $$5}' >> temp_elapsed_times_$$ARG2.txt; \
   	done; \
-  	echo "Average elapsed times over 10 executions:"; \ # Print the average of the recorded times
+  	echo "Average elapsed times over 10 executions:"; \
   	echo "$$(grep "Time: " temp_elapsed_times_$$ARG2.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
-  	rm -f temp_elapsed_times_$$ARG2.txt;                # Clean up the temp file after use
+  	rm -f temp_elapsed_times_$$ARG2.txt;
 
 # Target to clean up object files and temporary files
 clean: 
