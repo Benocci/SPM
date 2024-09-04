@@ -13,30 +13,22 @@ INCLUDES	   	= -I. -I ../include -I $(FF_ROOT) # Include directories: current di
 LIBS            = -pthread                       # Libraries to link against: pthread for threading support
 
 # Source file lists
-MPIFILES 		= $(wildcard MPI*.cpp)           # All source files starting with "MPI"
-SOURCES         = $(filter-out $(MPIFILES), $(wildcard *.cpp)) # All source files except those starting with "MPI"
-TARGET          = $(SOURCES:.cpp=)               # Target executables are named after the source files without the .cpp extension
+SOURCES         = $(wildcard *.cpp) 		# All source files
+TARGET          = $(SOURCES:.cpp=)          # Target executables are named after the source files without the .cpp extension
 
 # Phony targets are not actual files and will always be run when called
 .PHONY: all clean cleanall run_single run_average run_average_mpi
 
 # Default rule to compile any .cpp file into an executable
 %: %.cpp
-	$(CXX) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -o $@.o $< $(LIBS)
+	@if echo "$<" | grep -q "MPI"; then \
+		$(MPI) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -o $@.o $< $(LIBS); \
+	else \
+		$(CXX) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -o $@.o $< $(LIBS); \
+	fi
 
-# Rule to compile MPI source files
-mpi: $(MPIFILES:.cpp=.o)
-
-# Rule to compile a single .cpp file into an object file for MPI
-%.o: %.cpp
-	$(MPI) $(INCLUDES) $(CXXFLAGS) $(OPTFLAGS) -o $@ $< $(LIBS)
-
-# Target to build all non-MPI executables
+# Target to build all executables
 all: $(TARGET)
-
-# Target to run a single execution of the program
-run_single:
-	./$(FILE) $(ARGS)
 
 # Target to run the program multiple times and calculate the average execution time over 10 runs
 run_average:
@@ -52,7 +44,7 @@ run_average:
 run_average_mpi:
 	@ ARG2=$(shell echo $(ARGS) | awk '{print $$2}'); \
 	for i in $$(seq 1 10); do \
-		mpirun ./$(FILE) $(ARGS) | grep "# elapsed time" | awk '{print "Time: " $$5}' >> temp_elapsed_times_$$ARG2.txt; \
+		mpirun ./$(FILE) $(ARGS) | grep "Time with" | awk '{print "Time: " $$5}' >> temp_elapsed_times_$$ARG2.txt; \
   	done; \
   	echo "Average elapsed times over 10 executions:"; \
   	echo "$$(grep "Time: " temp_elapsed_times_$$ARG2.txt | awk '{ total += $$2; count++ } END { print total/count "s" }')"; \
